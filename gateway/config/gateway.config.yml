@@ -1,0 +1,84 @@
+http:
+  port: 8000
+admin:
+  port: 9876
+  host: localhost
+apiEndpoints:
+  messagingLogs:
+    host: localhost
+    paths: '/api/v1/messaging-logs'
+  auth:
+    host: localhost
+    paths: '/api/v1/auth'
+  messages:
+    host: localhost
+    paths: '/api/v1/messages'
+  members:
+    host: localhost
+    paths: '/api/v1/members'
+  rooms:
+    host: localhost
+    paths: '/api/v1/rooms'
+  socket:
+    host: localhost
+    paths: ''
+serviceEndpoints:
+  message-service:
+    url: 'http://message-service:8001'
+  log-service:
+    url: 'http://log-service:80'
+policies:
+  - basic-auth
+  - cors
+  - expression
+  - key-auth
+  - log
+  - oauth2
+  - proxy
+  - rate-limit
+pipelines:
+  socket-pipeline:
+    apiEndpoints:
+      - socket
+    policies:
+      - cors:
+        - action:
+            origin: 'http://localhost:3000'
+            methods: 'GET,HEAD,PUT,PATCH,POST,DELETE'
+            withCredentials: true
+      - proxy:
+          - action:
+              serviceEndpoint: message-service
+              changeOrigin: true
+              ws: true
+  message-pipeline:
+    apiEndpoints:
+      - auth
+      - messages
+      - members
+      - rooms
+    policies:
+    # Uncomment `key-auth:` when instructed to in the Getting Started guide.
+    # - key-auth:
+      - cors:
+        - action:
+            origin: 'http://localhost:3000'
+            methods: 'GET,HEAD,PUT,PATCH,POST,DELETE'
+            withCredentials: true
+      - proxy:
+          - action:
+              serviceEndpoint: message-service
+              changeOrigin: true
+  messagingLog-pipeline:
+    apiEndpoints:
+      - messagingLogs
+    policies:
+      - cors:
+        - action:
+            origin: 'http://localhost:3000'
+            methods: 'GET,HEAD,PUT,PATCH,POST,DELETE'
+            withCredentials: true
+      - proxy:
+          - action:
+              serviceEndpoint: log-service
+              changeOrigin: true 

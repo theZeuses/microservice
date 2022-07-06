@@ -1,0 +1,109 @@
+networks:
+  hellfire:
+    driver: bridge
+
+services:
+  gateway:
+    container_name: gateway
+    build: 
+      context: ./gateway
+      dockerfile: Dockerfile
+    image: gateway
+    working_dir: /var/www/gateway
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./gateway:/var/www/gateway
+    ports:
+      - 8000:8000
+    depends_on:
+      - message-service
+      - log-service
+    networks:
+      - hellfire
+
+  message-service:
+    container_name: message-service
+    build: 
+      context: ./message-service
+      dockerfile: Dockerfile
+    image: message-service
+    env_file:
+      - ./message-service/.env
+    working_dir: /var/www/message-service
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - './message-service:/var/www/message-service'
+    ports:
+      - 8001
+    depends_on:
+      - rabbitmq
+      - mongodb
+    links:
+      - rabbitmq
+    networks:
+      - hellfire
+
+  log-service:
+    container_name: log-service
+    build: 
+      context: ./log-service
+      dockerfile: Dockerfile
+    image: log-service
+    restart: unless-stopped
+    tty: true
+    ports:
+      - 80
+    depends_on:
+      - rabbitmq
+      - mongodb
+      - message-service
+    links:
+      - rabbitmq
+    networks:
+      - hellfire
+
+  mongodb:
+    image: mongo:5.0
+    ports:
+      - 27017
+    volumes:
+      - ~/dockervol/mongo:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=
+      - MONGO_INITDB_ROOT_PASSWORD=
+    networks:
+      - hellfire
+
+  rabbitmq:
+    container_name: "rabbitmq"
+    image: rabbitmq:3.10-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    ports:
+      # AMQP protocol port
+      - 5672
+      # HTTP management UI
+      - 15672
+    networks:
+      - hellfire
+
+  frontend:
+    container_name: frontend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: frontend
+    working_dir: /var/www/frontend
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - './frontend:/var/www/frontend'
+    ports:
+      - '3000:3000'
+    depends_on:
+      - gateway
+    networks:
+      - hellfire
